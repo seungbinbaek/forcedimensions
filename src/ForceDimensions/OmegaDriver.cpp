@@ -12,8 +12,8 @@ using sofa::simulation::SimulationStartEvent;
 using sofa::core::objectmodel::BaseContext;
 using sofa::core::objectmodel::Event;
 
-using sofa::defaulttype::Vec3;
-using sofa::defaulttype::Quat;
+using sofa::type::Vec3;
+using Quat = sofa::type::Quat<double>;
 typedef sofa::defaulttype::RigidTypes::Coord Coord;
 typedef sofa::defaulttype::RigidTypes::Deriv Deriv;
 
