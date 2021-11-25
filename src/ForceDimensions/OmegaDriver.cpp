@@ -13,7 +13,7 @@ using sofa::core::objectmodel::BaseContext;
 using sofa::core::objectmodel::Event;
 
 using sofa::type::Vec3;
-using Quat = sofa::type::Quat<double>;
+using Quat = sofa::type::Quat<SReal>;
 typedef sofa::defaulttype::RigidTypes::Coord Coord;
 typedef sofa::defaulttype::RigidTypes::Deriv Deriv;
 
