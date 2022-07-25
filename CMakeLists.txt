@@ -6,7 +6,7 @@ find_path(FORCEDIMENSIONS_SDK_PATH "force-dimensions")
 
 add_library(dhd SHARED IMPORTED)
 set_target_properties(dhd PROPERTIES
-  IMPORTED_LOCATION "${FORCEDIMENSIONS_SDK_PATH}/lib/release/lin-x86_64-gcc/libdhd.so.3.11.1"
+  IMPORTED_LOCATION "${FORCEDIMENSIONS_SDK_PATH}/lib/release/lin-x86_64-gcc/libdhd.a"
   INTERFACE_INCLUDE_DIRECTORIES "${FORCEDIMENSIONS_SDK_PATH}/include"
 )
 
