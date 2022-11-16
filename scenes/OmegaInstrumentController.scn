@@ -1,0 +1,73 @@
+<?xml version="1.0"?>
+
+<Node name="root" dt="0.01" gravity="0 -9 0">
+  <RequiredPlugin name="ForceDimensions"/>
+
+  <FreeMotionAnimationLoop/>
+  <LCPConstraintSolver tolerance="1e-3" maxIt="1000"/>
+  <OmegaDriver name="OmegaDriver" scale="400"/>
+  <LocalMinDistance alarmDistance="0.2" contactDistance="0.1"/>
+  <CollisionPipeline/>
+  <BruteForceBroadPhase/>
+  <BVHNarrowPhase/>
+  <CollisionResponse response="FrictionContact"/>
+
+  <Node name="Liver">
+
+    <EulerImplicit/>
+    <CGLinearSolver iterations="25" tolerance="1e-5" threshold="1e-05"/>
+    <MeshGmshLoader name="Loader" filename="mesh/liver.msh"/>
+    <TetrahedronSetTopologyContainer src="@Loader"/>
+	<TetrahedronSetTopologyModifier/>
+	<TetrahedronSetGeometryAlgorithms/>
+    <MechanicalObject src="@Loader"/>
+    <DiagonalMass totalMass="1.0"/>
+    <TetrahedralCorotationalFEMForceField youngModulus="3000" poissonRatio="0.45"/>
+    <PrecomputedConstraintCorrection/>
+    <FixedConstraint name="FixedConstraint" indices="3 39 64"/>
+
+    <Node name="VisualModel">
+      <MeshObjLoader name="Loader" filename="mesh/liver-smooth.obj"/>
+      <OglModel src="@Loader"/>
+      <BarycentricMapping/>
+    </Node>
+
+    <Node name="CollisionModel">
+      <SphereLoader name="Loader" filename="mesh/liver.sph"/>
+      <MechanicalObject position="@Loader.position"/>
+      <SphereCollisionModel listRadius="@Loader.listRadius" group="2"/>
+      <BarycentricMapping/>
+    </Node>
+    
+  </Node>
+
+  <Node name="Proxy">
+    <MechanicalObject template="Rigid3d" position="@/OmegaDriver.pose"/>
+  </Node>
+
+  <Node name="Instrument">
+    <EulerImplicitSolver/>
+    <CGLinearSolver iterations="25" tolerance="1e-5" threshold="1e-05"/>
+    <MechanicalObject template="Rigid3d"/>
+    <UniformMass totalMass="0.1"/>
+    <UncoupledConstraintCorrection/>
+    <LCPForceFeedback activate="1" forceCoef="0.9"/>
+    <RestShapeSpringsForceField stiffness="1000" angularStiffness="1000" external_rest_shape="@/Proxy" points="0"/>
+
+    <Node name="VisualModel">
+      <MeshObjLoader name="Loader" filename="Demos/Dentistry/data/mesh/dental_instrument.obj"/>
+      <OglModel src="@Loader" color="white"/>
+      <RigidMapping/>
+    </Node>
+    
+    <Node name="CollisionModel">
+      <MeshObjLoader name="Loader" filename="Demos/Dentistry/data/mesh/dental_instrument_centerline.obj"/>
+      <MeshTopology src="@Loader"/>
+      <MechanicalObject src="@Loader"/>
+      <LineCollisionModel/>
+      <PointCollisionModel/>
+      <RigidMapping/>
+    </Node>  
+  </Node>
+  
+</Node>
