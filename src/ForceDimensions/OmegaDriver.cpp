@@ -17,7 +17,7 @@ using Quat = sofa::type::Quat<SReal>;
 typedef sofa::defaulttype::RigidTypes::Coord Coord;
 typedef sofa::defaulttype::RigidTypes::Deriv Deriv;
 
-using sofa::component::controller::ForceFeedback;
+using sofa::component::haptics::ForceFeedback;
 
 void * OmegaDriver::updateForceFeedback(void *args) {
     OmegaDriver *driver = reinterpret_cast<OmegaDriver*>(args);

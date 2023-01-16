@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.12)
 
-project(ForceDimensions VERSION 0.1)
+project(ForceDimensions VERSION 0.2)
 
 find_path(FORCEDIMENSIONS_SDK_PATH "force-dimensions") 
 
@@ -11,7 +11,8 @@ set_target_properties(dhd PROPERTIES
 )
 
 
-sofa_find_package(SofaHaptics REQUIRED)
+sofa_find_package(Sofa.Component.Controller REQUIRED)
+sofa_find_package(Sofa.Component.Haptics REQUIRED)
 
 set(FORCEDIMENSIONS_SRC_DIR src/ForceDimensions)
 
@@ -24,7 +25,7 @@ set(SOURCE_FILES
   ${FORCEDIMENSIONS_SRC_DIR}/OmegaDriver.cpp)
 
 add_library(${PROJECT_NAME} SHARED ${HEADER_FILES} ${SOURCE_FILES})
-target_link_libraries(${PROJECT_NAME} SofaHaptics dhd)
+target_link_libraries(${PROJECT_NAME} Sofa.Component.Controller Sofa.Component.Haptics dhd)
 set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "-DSOFA_BUILD_FORCEDIMENSIONS")
 
 ## Installation rules for the library; CMake package configurations files

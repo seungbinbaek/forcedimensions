@@ -2,8 +2,8 @@
 
 #include "initForceDimensions.h"
 
-#include <SofaUserInteraction/Controller.h>
-#include <SofaHaptics/ForceFeedback.h>
+#include <sofa/component/controller/Controller.h>
+#include <sofa/component/haptics/ForceFeedback.h>
 
 #include <mutex>
 
@@ -46,5 +46,5 @@ class SOFA_FORCEDIMENSIONS_API OmegaDriver : public sofa::component::controller:
   sofa::defaulttype::RigidTypes::Coord devicePose;
   std::mutex devicePoseMutex;
 
-  sofa::component::controller::ForceFeedback::SPtr forceFeedback;
+  sofa::component::haptics::ForceFeedback::SPtr forceFeedback;
 };
