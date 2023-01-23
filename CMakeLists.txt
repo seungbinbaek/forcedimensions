@@ -4,12 +4,13 @@ project(ForceDimensions VERSION 0.2)
 
 find_path(FORCEDIMENSIONS_SDK_PATH "force-dimensions") 
 
-add_library(dhd SHARED IMPORTED)
-set_target_properties(dhd PROPERTIES
-  IMPORTED_LOCATION "${FORCEDIMENSIONS_SDK_PATH}/lib/release/lin-x86_64-gcc/libdhd.a"
-  INTERFACE_INCLUDE_DIRECTORIES "${FORCEDIMENSIONS_SDK_PATH}/include"
-)
-
+find_library(
+  DHD
+  NAMES dhdms64 dhd
+  PATHS ${FORCEDIMENSIONS_SDK_PATH}/lib/release/lin-x86_64-gcc
+        ${FORCEDIMENSIONS_SDK_PATH}/lib
+  REQUIRED
+  )
 
 sofa_find_package(Sofa.Component.Controller REQUIRED)
 sofa_find_package(Sofa.Component.Haptics REQUIRED)
@@ -25,7 +26,9 @@ set(SOURCE_FILES
   ${FORCEDIMENSIONS_SRC_DIR}/OmegaDriver.cpp)
 
 add_library(${PROJECT_NAME} SHARED ${HEADER_FILES} ${SOURCE_FILES})
-target_link_libraries(${PROJECT_NAME} Sofa.Component.Controller Sofa.Component.Haptics dhd)
+target_link_libraries(${PROJECT_NAME} Sofa.Component.Controller Sofa.Component.Haptics ${DHD})
+
+target_include_directories(${PROJECT_NAME} PRIVATE ${FORCEDIMENSIONS_SDK_PATH}/include)
 set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "-DSOFA_BUILD_FORCEDIMENSIONS")
 
 ## Installation rules for the library; CMake package configurations files

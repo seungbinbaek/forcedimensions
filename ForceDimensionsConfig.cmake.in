@@ -4,16 +4,19 @@
 
 find_package(SofaHaptics REQUIRED)
 
-set_target_properties(dhd PROPERTIES
-  IMPORTED_LOCATION "${FORCEDIMENSIONS_SDK}/lib/release/lin-x86_64-gcc/libdhd.so.3.11.1"
-  INTERFACE_INCLUDE_DIRECTORIES "${FORCEDIMENSIONS_SDK}/include"
-)
+find_library(
+  DHD
+  NAMES dhdms64 dhd
+  PATHS ${FORCEDIMENSIONS_SDK_PATH}/lib/release/lin-x86_64-gcc
+        ${FORCEDIMENSIONS_SDK_PATH}/lib
+  REQUIRED
+  )
 
 if(NOT TARGET @PROJECT_NAME@)
     include("${CMAKE_CURRENT_LIST_DIR}/@PROJECT_NAME@Targets.cmake")
 endif()
 
-target_link_libraries(@PROJECT_NAME@ dhd)
+target_link_libraries(@PROJECT_NAME@ ${DHD})
 set(@PROJECT_NAME@_INCLUDE_DIRS  @CMAKE_CURRENT_SOURCE_DIR@/../)
 
 check_required_components(@PROJECT_NAME@)
