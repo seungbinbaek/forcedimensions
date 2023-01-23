@@ -2,6 +2,9 @@
 
 This plugin provides classes to use ForceDimensions haptic interfaces in SOFA.
 
+> Use **master** branch to build with the latest version of SOFA;
+> use **sofa_v21.12** branch to build the plugin with SOFA v21.12.00
+
 ## Installation
 
 0. Download ForceDimensions SDK from http://forcedimension.com/software/sdk and uncompress it
