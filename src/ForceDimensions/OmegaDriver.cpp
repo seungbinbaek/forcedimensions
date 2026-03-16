@@ -72,6 +72,8 @@ OmegaDriver::OmegaDriver() :
   d_enableForceFeedback(initData(&d_enableForceFeedback, "enableForceFeedback", "Enable force feedback")),
   d_computeForceFeedback(initData(&d_computeForceFeedback, "computeForceFeedback", "Enable force feedback computation")),
   d_autoInit(initData(&d_autoInit, false, "autoInit", "Use DRD auto-initialization for smooth free movement")),
+  active(false),
+  deviceInitialized(false),
   error(0),
   forceFeedback(nullptr)
 {
@@ -93,20 +95,18 @@ void OmegaDriver::init()
 }
 
 void OmegaDriver::bwdInit()
-{ 
+{
     Node *context = dynamic_cast<Node *>(this->getContext()); // access to current node
     forceFeedback = context->get<ForceFeedback>(this->getTags(), BaseContext::SearchRoot);
-
-    try {
-        initDevice();
-    }  catch (std::runtime_error &e) {
-        msg_warning() << "Failed to initialize the device: " << e.what();
-    }
+    // Device initialization is deferred to the first animation step (Play button click)
 }
 
 void OmegaDriver::reinit()
 {
-  active = false;
+    active = false;
+    // Note: deviceInitialized is intentionally NOT reset here because reinit()
+    // is called from within initDevice() after a successful init.
+    // deviceInitialized is only reset externally (e.g. simulation restart) via resetDevice().
 }
 
 void OmegaDriver::initDevice()
@@ -197,8 +197,14 @@ void OmegaDriver::updatePose()
 
 void OmegaDriver::onBeginAnimationStep(const double)
 {
-    if(!active)
-        active = true;
+    if (!deviceInitialized) {
+        deviceInitialized = true;
+        try {
+            initDevice();
+        } catch (std::runtime_error &e) {
+            msg_warning() << "Failed to initialize the device: " << e.what();
+        }
+    }
 
     if (!error)
         updatePose();
