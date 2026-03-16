@@ -184,8 +184,11 @@ void OmegaDriver::onBeginAnimationStep(const double)
         }
     }
 
-    if (deviceRunning)
+    if (deviceRunning) {
+        if (!active)
+            active = true;  // signal haptic thread to start reading device
         updatePose();
+    }
 }
 
 int OmegaDriverClass = sofa::core::RegisterObject("ForceDimensions Omega haptic interface driver.")
