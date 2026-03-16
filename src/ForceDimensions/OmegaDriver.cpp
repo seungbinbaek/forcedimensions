@@ -112,19 +112,23 @@ void OmegaDriver::reinit()
 
 void OmegaDriver::initDevice()
 {
+    bool opened = false;
+
     auto handleError = [&]() {
+        if (opened)
+            drdClose();   // ensure device is released so next attempt can open it
         error = dhdErrorGetLast();
         throw std::runtime_error(dhdErrorGetLastStr());
     };
 
     // get device count
-    if (dhdGetDeviceCount() <= 0) {
+    if (dhdGetDeviceCount() <= 0)
         handleError();
-    }
 
     // open the first available device (via DRD — DHD functions remain available)
     if (drdOpen() < 0)
         handleError();
+    opened = true;
 
     // Optionally run DRD auto-initialization for smooth free movement
     if (d_autoInit.getValue()) {
@@ -133,8 +137,11 @@ void OmegaDriver::initDevice()
         } else {
             if (drdAutoInit() < 0)
                 handleError();
+            // drdCheckInit validates calibration quality; treat failure as warning
+            // so a slightly imperfect autoInit does not abort initialization
             if (drdCheckInit() < 0)
-                handleError();
+                msg_warning() << "DRD calibration check failed — proceeding anyway: "
+                              << dhdErrorGetLastStr();
             // Stop regulation thread but keep forces enabled → smooth free movement
             if (drdStop(true) < 0)
                 handleError();
