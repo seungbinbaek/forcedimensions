@@ -1,5 +1,5 @@
 #include "OmegaDriver.h"
-#include <dhdc.h>
+#include <drdc.h>
 #include <sofa/simulation/AnimateBeginEvent.h>
 #include <sofa/simulation/events/SimulationStartEvent.h>
 #include <sofa/core/ObjectFactory.h>
@@ -28,22 +28,33 @@ void * OmegaDriver::updateForceFeedback(void *args) {
 
         driver->updateDevicePose();
 
-	if (driver->d_computeForceFeedback.getValue()) {
-	  double fx,fy,fz;
-	  auto pos = driver->devicePose.getCenter();
+        Vec3 fdev(0, 0, 0);
 
-	  // maybe compute wrench instead?
-	  driver->forceFeedback->computeForce(pos[0], pos[1], pos[2],
-					      0,0,0,0,
-					      fx, fy, fz);
+        if (driver->d_computeForceFeedback.getValue() && driver->forceFeedback) {
+            double fx, fy, fz;
+            auto pos = driver->devicePose.getCenter();
 
-	  auto fdev = driver->d_baseFrame.getValue().unprojectVector(Vec3(fx,fy,fz));
-	  driver->d_forceFeedback.setValue(Deriv(fdev,Vec3()));
+            // maybe compute wrench instead?
+            driver->forceFeedback->computeForce(pos[0], pos[1], pos[2],
+                                                0, 0, 0, 0,
+                                                fx, fy, fz);
 
-	  if (driver->forceFeedback && driver->d_enableForceFeedback.getValue()) {
-	    dhdSetForce(fdev[2], fdev[0], fdev[1]);
-	  }
-	}
+            fdev = driver->d_baseFrame.getValue().unprojectVector(Vec3(fx, fy, fz));
+
+            // Apply forceScale
+            SReal forceScale = driver->d_forceScale.getValue();
+            if (forceScale > 0)
+                fdev *= forceScale;
+
+            driver->d_forceFeedback.setValue(Deriv(fdev, Vec3()));
+        }
+
+        // Always send force when enabled:
+        // - In free space: sends (0,0,0) so SDK gravity compensation runs cleanly
+        // - In contact: sends computed contact force
+        if (driver->d_enableForceFeedback.getValue()) {
+            dhdSetForce(fdev[2], fdev[0], fdev[1]);
+        }
     }
 
     return nullptr;
@@ -60,18 +71,20 @@ OmegaDriver::OmegaDriver() :
   d_gammaOffset(initData(&d_gammaOffset, "gammaOffset", "Wrist gamma angle offset")),
   d_enableForceFeedback(initData(&d_enableForceFeedback, "enableForceFeedback", "Enable force feedback")),
   d_computeForceFeedback(initData(&d_computeForceFeedback, "computeForceFeedback", "Enable force feedback computation")),
+  d_autoInit(initData(&d_autoInit, false, "autoInit", "Use DRD auto-initialization for smooth free movement")),
   error(0),
   forceFeedback(nullptr)
 {
   f_listening.setValue(true);
   d_gammaOffset.setValue(1.15);
+  d_forceScale.setValue(1.0);
   d_computeForceFeedback.setValue(true);
   d_enableForceFeedback.setValue(true);
 }
 
 OmegaDriver::~OmegaDriver()
 {
-    dhdClose();
+    drdClose();
 }
 
 void OmegaDriver::init()
@@ -108,15 +121,39 @@ void OmegaDriver::initDevice()
         handleError();
     }
 
-    // open the first available device
-    if (dhdOpen() < 0)
+    // open the first available device (via DRD — DHD functions remain available)
+    if (drdOpen() < 0)
         handleError();
+
+    // Optionally run DRD auto-initialization for smooth free movement
+    if (d_autoInit.getValue()) {
+        if (!drdIsSupported()) {
+            msg_warning() << "Device does not support DRD auto-initialization";
+        } else {
+            if (drdAutoInit() < 0)
+                handleError();
+            if (drdCheckInit() < 0)
+                handleError();
+            // Stop regulation thread but keep forces enabled → smooth free movement
+            if (drdStop(true) < 0)
+                handleError();
+        }
+    }
 
     if(dhdSetGravityCompensation(DHD_ON))
         handleError();
 
     if(dhdEnableForce(DHD_ON))
         handleError();
+
+    // Explicitly release electromagnetic brakes to allow smooth free movement
+    if(dhdSetBrakes(DHD_OFF))
+        handleError();
+
+    // Set SDK-level max force limit if configured (hardware-level clamping)
+    SReal maxF = d_maxForce.getValue();
+    if (maxF > 0)
+        dhdSetMaxForce(static_cast<double>(maxF));
 
     reinit();
     

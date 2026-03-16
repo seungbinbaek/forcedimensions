@@ -1,33 +1,32 @@
 #include "initForceDimensions.h"
 
 extern "C" {
-  void initExternalModule()
-  {
+    SOFA_FORCEDIMENSIONS_API void initExternalModule()
+    {
+    }
 
-  }
+    SOFA_FORCEDIMENSIONS_API const char* getModuleName()
+    {
+        return "ForceDimensions";
+    }
 
-  const char* getModuleName()
-  {
-    return "ForceDimensions";
-  }
+    SOFA_FORCEDIMENSIONS_API const char* getModuleVersion()
+    {
+        return "0.1";
+    }
 
-  const char* getModuleVersion()
-  {
-    return "0.1";
-  }
-  
-  const char* getModuleLicense()
-  {
-    return "LGPL";
-  }
-  
-  const char* getModuleDescription()
-  {
-    return "ForceDimensions haptic device drivers";
-  }
+    SOFA_FORCEDIMENSIONS_API const char* getModuleLicense()
+    {
+        return "LGPL";
+    }
 
-  const char* getModuleComponentList()
-  {
-    return "OmegaDriver";
-  }
+    SOFA_FORCEDIMENSIONS_API const char* getModuleDescription()
+    {
+        return "ForceDimensions haptic device drivers";
+    }
+
+    SOFA_FORCEDIMENSIONS_API const char* getModuleComponentList()
+    {
+        return "OmegaDriver";
+    }
 }
