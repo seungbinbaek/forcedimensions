@@ -142,7 +142,7 @@ void OmegaDriver::updateDevicePose()
 
     // update the pose data
     devicePoseMutex.lock();
-    devicePose.getCenter() = Vec3(y, z, x);
+    devicePose.getCenter() = Vec3(y, -x, z);
     devicePose.getOrientation() = Quat::fromEuler(ob, og, oa, Quat::EulerOrder::XZY);
     devicePose = d_baseFrame.getValue().mult(devicePose);
     devicePoseMutex.unlock();
