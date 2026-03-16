@@ -44,6 +44,7 @@ class SOFA_FORCEDIMENSIONS_API OmegaDriver : public sofa::component::controller:
 
   bool active;
   bool deviceInitialized;
+  bool deviceRunning;
   int error;
   sofa::defaulttype::RigidTypes::Coord devicePose;
   std::mutex devicePoseMutex;

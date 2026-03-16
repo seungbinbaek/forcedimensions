@@ -74,6 +74,7 @@ OmegaDriver::OmegaDriver() :
   d_autoInit(initData(&d_autoInit, false, "autoInit", "Use DRD auto-initialization for smooth free movement")),
   active(false),
   deviceInitialized(false),
+  deviceRunning(false),
   error(0),
   forceFeedback(nullptr)
 {
@@ -140,14 +141,14 @@ void OmegaDriver::initDevice()
         }
     }
 
-    if(dhdSetGravityCompensation(DHD_ON))
+    if (dhdSetGravityCompensation(DHD_ON) < 0)
         handleError();
 
-    if(dhdEnableForce(DHD_ON))
+    if (dhdEnableForce(DHD_ON) < 0)
         handleError();
 
     // Explicitly release electromagnetic brakes to allow smooth free movement
-    if(dhdSetBrakes(DHD_OFF))
+    if (dhdSetBrakes(DHD_OFF) < 0)
         handleError();
 
     // Set SDK-level max force limit if configured (hardware-level clamping)
@@ -156,10 +157,11 @@ void OmegaDriver::initDevice()
         dhdSetMaxForce(static_cast<double>(maxF));
 
     reinit();
-    
-    dhdSetForceAndTorqueAndGripperForce (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
-    dhdStartThread(updateForceFeedback,this, DHD_THREAD_PRIORITY_HIGH);
 
+    dhdSetForceAndTorqueAndGripperForce(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+    dhdStartThread(updateForceFeedback, this, DHD_THREAD_PRIORITY_HIGH);
+
+    deviceRunning = true;
     updatePose();
 }
 
@@ -206,7 +208,7 @@ void OmegaDriver::onBeginAnimationStep(const double)
         }
     }
 
-    if (!error)
+    if (deviceRunning)
         updatePose();
 }
 
