@@ -32,6 +32,7 @@ class SOFA_FORCEDIMENSIONS_API OmegaDriver : public sofa::component::controller:
   sofa::core::objectmodel::Data<SReal> d_gammaOffset;
   sofa::core::objectmodel::Data<bool> d_enableForceFeedback;
   sofa::core::objectmodel::Data<bool> d_computeForceFeedback;
+  sofa::core::objectmodel::Data<bool> d_autoInit;
 
  private:
   void initDevice();
