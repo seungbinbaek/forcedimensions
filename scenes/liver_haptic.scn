@@ -28,7 +28,6 @@
   <FreeMotionAnimationLoop/>
   <LCPConstraintSolver tolerance="1e-3" maxIt="1000"/>
   <OmegaDriver name="OmegaDriver" scale="400"
-               autoInit="1"
                enableForceFeedback="1"
                computeForceFeedback="1"
                forceScale="1.0"

@@ -1,5 +1,5 @@
 #include "OmegaDriver.h"
-#include <drdc.h>
+#include <dhdc.h>
 #include <sofa/simulation/AnimateBeginEvent.h>
 #include <sofa/simulation/events/SimulationStartEvent.h>
 #include <sofa/core/ObjectFactory.h>
@@ -34,14 +34,12 @@ void * OmegaDriver::updateForceFeedback(void *args) {
             double fx, fy, fz;
             auto pos = driver->devicePose.getCenter();
 
-            // maybe compute wrench instead?
             driver->forceFeedback->computeForce(pos[0], pos[1], pos[2],
                                                 0, 0, 0, 0,
                                                 fx, fy, fz);
 
             fdev = driver->d_baseFrame.getValue().unprojectVector(Vec3(fx, fy, fz));
 
-            // Apply forceScale
             SReal forceScale = driver->d_forceScale.getValue();
             if (forceScale > 0)
                 fdev *= forceScale;
@@ -49,7 +47,7 @@ void * OmegaDriver::updateForceFeedback(void *args) {
             driver->d_forceFeedback.setValue(Deriv(fdev, Vec3()));
         }
 
-        // Always send force when enabled:
+        // Always send force:
         // - In free space: sends (0,0,0) so SDK gravity compensation runs cleanly
         // - In contact: sends computed contact force
         if (driver->d_enableForceFeedback.getValue()) {
@@ -71,7 +69,9 @@ OmegaDriver::OmegaDriver() :
   d_gammaOffset(initData(&d_gammaOffset, "gammaOffset", "Wrist gamma angle offset")),
   d_enableForceFeedback(initData(&d_enableForceFeedback, "enableForceFeedback", "Enable force feedback")),
   d_computeForceFeedback(initData(&d_computeForceFeedback, "computeForceFeedback", "Enable force feedback computation")),
-  d_autoInit(initData(&d_autoInit, false, "autoInit", "Use DRD auto-initialization for smooth free movement")),
+  active(false),
+  deviceInitialized(false),
+  deviceRunning(false),
   error(0),
   forceFeedback(nullptr)
 {
@@ -84,7 +84,7 @@ OmegaDriver::OmegaDriver() :
 
 OmegaDriver::~OmegaDriver()
 {
-    drdClose();
+    dhdClose();
 }
 
 void OmegaDriver::init()
@@ -93,79 +93,59 @@ void OmegaDriver::init()
 }
 
 void OmegaDriver::bwdInit()
-{ 
-    Node *context = dynamic_cast<Node *>(this->getContext()); // access to current node
+{
+    Node *context = dynamic_cast<Node *>(this->getContext());
     forceFeedback = context->get<ForceFeedback>(this->getTags(), BaseContext::SearchRoot);
-
-    try {
-        initDevice();
-    }  catch (std::runtime_error &e) {
-        msg_warning() << "Failed to initialize the device: " << e.what();
-    }
+    // Device initialization is deferred to the first animation step (Play button click)
 }
 
 void OmegaDriver::reinit()
 {
-  active = false;
+    active = false;
 }
 
 void OmegaDriver::initDevice()
 {
+    bool opened = false;
+
     auto handleError = [&]() {
+        if (opened)
+            dhdClose();
         error = dhdErrorGetLast();
         throw std::runtime_error(dhdErrorGetLastStr());
     };
 
-    // get device count
-    if (dhdGetDeviceCount() <= 0) {
-        handleError();
-    }
-
-    // open the first available device (via DRD — DHD functions remain available)
-    if (drdOpen() < 0)
+    if (dhdGetDeviceCount() <= 0)
         handleError();
 
-    // Optionally run DRD auto-initialization for smooth free movement
-    if (d_autoInit.getValue()) {
-        if (!drdIsSupported()) {
-            msg_warning() << "Device does not support DRD auto-initialization";
-        } else {
-            if (drdAutoInit() < 0)
-                handleError();
-            if (drdCheckInit() < 0)
-                handleError();
-            // Stop regulation thread but keep forces enabled → smooth free movement
-            if (drdStop(true) < 0)
-                handleError();
-        }
-    }
+    if (dhdOpen() < 0)
+        handleError();
+    opened = true;
 
-    if(dhdSetGravityCompensation(DHD_ON))
+    if (dhdSetGravityCompensation(DHD_ON) < 0)
         handleError();
 
-    if(dhdEnableForce(DHD_ON))
+    if (dhdEnableForce(DHD_ON) < 0)
         handleError();
 
-    // Explicitly release electromagnetic brakes to allow smooth free movement
-    if(dhdSetBrakes(DHD_OFF))
+    if (dhdSetBrakes(DHD_OFF) < 0)
         handleError();
 
-    // Set SDK-level max force limit if configured (hardware-level clamping)
     SReal maxF = d_maxForce.getValue();
     if (maxF > 0)
         dhdSetMaxForce(static_cast<double>(maxF));
 
     reinit();
-    
-    dhdSetForceAndTorqueAndGripperForce (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
-    dhdStartThread(updateForceFeedback,this, DHD_THREAD_PRIORITY_HIGH);
 
+    dhdSetForceAndTorqueAndGripperForce(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+    dhdStartThread(updateForceFeedback, this, DHD_THREAD_PRIORITY_HIGH);
+
+    deviceRunning = true;
     updatePose();
 }
 
 void OmegaDriver::updateDevicePose()
 {
-    // retrive the pose from the device
     double x, y, z;
     double oa, ob, og;
 
@@ -177,7 +157,6 @@ void OmegaDriver::updateDevicePose()
     y *= d_scale.getValue();
     z *= d_scale.getValue();
 
-    // update the pose data
     devicePoseMutex.lock();
     devicePose.getCenter() = Vec3(y, -x, z);
     devicePose.getOrientation() = Quat::fromEuler(ob, og, oa, Quat::EulerOrder::XZY);
@@ -187,7 +166,6 @@ void OmegaDriver::updateDevicePose()
 
 void OmegaDriver::updatePose()
 {
-    // update the pose data
     auto pose = d_pose.beginEdit();
     devicePoseMutex.lock();
     *pose = devicePose;
@@ -197,11 +175,20 @@ void OmegaDriver::updatePose()
 
 void OmegaDriver::onBeginAnimationStep(const double)
 {
-    if(!active)
-        active = true;
+    if (!deviceInitialized) {
+        deviceInitialized = true;
+        try {
+            initDevice();
+        } catch (std::runtime_error &e) {
+            msg_warning() << "Failed to initialize the device: " << e.what();
+        }
+    }
 
-    if (!error)
+    if (deviceRunning) {
+        if (!active)
+            active = true;  // signal haptic thread to start reading device
         updatePose();
+    }
 }
 
 int OmegaDriverClass = sofa::core::RegisterObject("ForceDimensions Omega haptic interface driver.")
