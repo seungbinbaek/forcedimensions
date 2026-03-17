@@ -58,6 +58,16 @@
       <BarycentricMapping/>
     </Node>
 
+    <!-- UE5 렌더링용 소켓 송신 노드 -->
+    <Node name="SocketSender">
+      <MeshOBJLoader name="SurfLoader" filename="mesh/liver-smooth.obj"/>
+      <TriangleSetTopologyContainer name="topo" src="@SurfLoader"/>
+      <MechanicalObject name="visMO" src="@SurfLoader"/>
+      <BarycentricMapping output="@visMO"/>
+      <SOFASocketSender name="UESender" mstate="@visMO" topology="@topo"
+                        host="127.0.0.1" port="7777" enabled="1"/>
+    </Node>
+
     <Node name="CollisionModel">
       <SphereLoader name="Loader" filename="mesh/liver.sph"/>
       <MechanicalObject position="@Loader.position"/>

@@ -19,14 +19,21 @@ set(FORCEDIMENSIONS_SRC_DIR src/ForceDimensions)
 
 set(HEADER_FILES
   ${FORCEDIMENSIONS_SRC_DIR}/initForceDimensions.h
-  ${FORCEDIMENSIONS_SRC_DIR}/OmegaDriver.h)
+  ${FORCEDIMENSIONS_SRC_DIR}/OmegaDriver.h
+  ${FORCEDIMENSIONS_SRC_DIR}/SOFASocketSender.h)
 
 set(SOURCE_FILES
   ${FORCEDIMENSIONS_SRC_DIR}/initForceDimensions.cpp
-  ${FORCEDIMENSIONS_SRC_DIR}/OmegaDriver.cpp)
+  ${FORCEDIMENSIONS_SRC_DIR}/OmegaDriver.cpp
+  ${FORCEDIMENSIONS_SRC_DIR}/SOFASocketSender.cpp)
 
 add_library(${PROJECT_NAME} SHARED ${HEADER_FILES} ${SOURCE_FILES})
 target_link_libraries(${PROJECT_NAME} Sofa.Component.Controller Sofa.Component.Haptics ${DHD})
+
+# Windows 소켓 라이브러리 (SOFASocketSender용)
+if(WIN32)
+  target_link_libraries(${PROJECT_NAME} ws2_32)
+endif()
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${FORCEDIMENSIONS_SDK_PATH}/include)
 set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "-DSOFA_BUILD_FORCEDIMENSIONS")
