@@ -1,0 +1,43 @@
+<?xml version="1.0"?>
+
+<!--
+  STEP 1: DefaultAnimationLoop 로 FEM 안정성/메쉬 렌더링 확인
+  STEP 2: 확인 후 FreeMotionAnimationLoop + 햅틱 블록 복원
+-->
+
+<Node name="root" dt="0.005" gravity="0 -9.81 0">
+  <RequiredPlugin name="Sofa.Component.AnimationLoop"/>
+  <RequiredPlugin name="Sofa.Component.Constraint.Projective"/>
+  <RequiredPlugin name="Sofa.Component.IO.Mesh"/>
+  <RequiredPlugin name="Sofa.Component.LinearSolver.Iterative"/>
+  <RequiredPlugin name="Sofa.Component.Mapping.Linear"/>
+  <RequiredPlugin name="Sofa.Component.Mass"/>
+  <RequiredPlugin name="Sofa.Component.ODESolver.Backward"/>
+  <RequiredPlugin name="Sofa.Component.SolidMechanics.FEM.Elastic"/>
+  <RequiredPlugin name="Sofa.Component.StateContainer"/>
+  <RequiredPlugin name="Sofa.Component.Topology.Container.Dynamic"/>
+  <RequiredPlugin name="Sofa.Component.Visual"/>
+  <DefaultAnimationLoop/>
+
+  <Node name="Liver">
+
+    <EulerImplicitSolver rayleighStiffness="0.1" rayleighMass="0.1"/>
+    <CGLinearSolver iterations="25" tolerance="1e-9" threshold="1e-09"/>
+    <MeshGmshLoader name="Loader" filename="mesh/liver.msh"/>
+    <TetrahedronSetTopologyContainer src="@Loader"/>
+    <TetrahedronSetGeometryAlgorithms/>
+    <MechanicalObject src="@Loader"/>
+    <DiagonalMass massDensity="1"/>
+    <TetrahedralCorotationalFEMForceField method="large" youngModulus="3000" poissonRatio="0.3"/>
+    <FixedProjectiveConstraint name="FixedConstraint" indices="3 39 64"/>
+
+    <!-- UE5가 SofaPhysicsAPI OutputMesh로 직접 읽음 -->
+    <Node name="VisualModel">
+      <MeshOBJLoader name="Loader" filename="mesh/liver-smooth.obj"/>
+      <VisualModelImpl name="Visual" src="@Loader"/>
+      <BarycentricMapping/>
+    </Node>
+
+  </Node>
+
+</Node>
