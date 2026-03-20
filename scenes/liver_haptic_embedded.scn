@@ -1,23 +1,48 @@
 <?xml version="1.0"?>
 
 <!--
-  STEP 1: DefaultAnimationLoop 로 FEM 안정성/메쉬 렌더링 확인
-  STEP 2: 확인 후 FreeMotionAnimationLoop + 햅틱 블록 복원
+  STEP 2: FreeMotionAnimationLoop + 햅틱 (임베드용)
+  - OglModel → VisualModelImpl (GL context 불필요)
+  - OmegaDriver + LCPForceFeedback + 충돌 파이프라인
 -->
 
 <Node name="root" dt="0.005" gravity="0 -9.81 0">
+  <RequiredPlugin name="ForceDimensions"/>
   <RequiredPlugin name="Sofa.Component.AnimationLoop"/>
+  <RequiredPlugin name="Sofa.Component.Collision.Detection.Algorithm"/>
+  <RequiredPlugin name="Sofa.Component.Collision.Detection.Intersection"/>
+  <RequiredPlugin name="Sofa.Component.Collision.Geometry"/>
+  <RequiredPlugin name="Sofa.Component.Collision.Response.Contact"/>
+  <RequiredPlugin name="Sofa.Component.Constraint.Lagrangian.Correction"/>
+  <RequiredPlugin name="Sofa.Component.Constraint.Lagrangian.Solver"/>
   <RequiredPlugin name="Sofa.Component.Constraint.Projective"/>
+  <RequiredPlugin name="Sofa.Component.Haptics"/>
   <RequiredPlugin name="Sofa.Component.IO.Mesh"/>
   <RequiredPlugin name="Sofa.Component.LinearSolver.Iterative"/>
   <RequiredPlugin name="Sofa.Component.Mapping.Linear"/>
+  <RequiredPlugin name="Sofa.Component.Mapping.NonLinear"/>
   <RequiredPlugin name="Sofa.Component.Mass"/>
   <RequiredPlugin name="Sofa.Component.ODESolver.Backward"/>
+  <RequiredPlugin name="Sofa.Component.SceneUtility"/>
   <RequiredPlugin name="Sofa.Component.SolidMechanics.FEM.Elastic"/>
+  <RequiredPlugin name="Sofa.Component.SolidMechanics.Spring"/>
   <RequiredPlugin name="Sofa.Component.StateContainer"/>
+  <RequiredPlugin name="Sofa.Component.Topology.Container.Constant"/>
   <RequiredPlugin name="Sofa.Component.Topology.Container.Dynamic"/>
   <RequiredPlugin name="Sofa.Component.Visual"/>
-  <DefaultAnimationLoop/>
+
+  <FreeMotionAnimationLoop/>
+  <LCPConstraintSolver tolerance="1e-3" maxIt="1000"/>
+  <OmegaDriver name="OmegaDriver" scale="400"
+               enableForceFeedback="1"
+               computeForceFeedback="1"
+               forceScale="1.0"
+               maxForce="5.0"/>
+  <LocalMinDistance alarmDistance="0.2" contactDistance="0.1"/>
+  <CollisionPipeline/>
+  <BruteForceBroadPhase/>
+  <BVHNarrowPhase/>
+  <CollisionResponse response="FrictionContactConstraint"/>
 
   <Node name="Liver">
 
@@ -25,10 +50,12 @@
     <CGLinearSolver iterations="25" tolerance="1e-9" threshold="1e-09"/>
     <MeshGmshLoader name="Loader" filename="mesh/liver.msh"/>
     <TetrahedronSetTopologyContainer src="@Loader"/>
+    <TetrahedronSetTopologyModifier/>
     <TetrahedronSetGeometryAlgorithms/>
     <MechanicalObject src="@Loader"/>
     <DiagonalMass massDensity="1"/>
     <TetrahedralCorotationalFEMForceField method="large" youngModulus="3000" poissonRatio="0.3"/>
+    <PrecomputedConstraintCorrection/>
     <FixedProjectiveConstraint name="FixedConstraint" indices="3 39 64"/>
 
     <!-- UE5가 SofaPhysicsAPI OutputMesh로 직접 읽음 -->
@@ -38,6 +65,42 @@
       <BarycentricMapping/>
     </Node>
 
+    <Node name="CollisionModel">
+      <SphereLoader name="Loader" filename="mesh/liver.sph"/>
+      <MechanicalObject position="@Loader.position"/>
+      <SphereCollisionModel listRadius="@Loader.listRadius" group="2"/>
+      <BarycentricMapping/>
+    </Node>
+
+  </Node>
+
+  <Node name="Proxy">
+    <MechanicalObject template="Rigid3d" position="@/OmegaDriver.pose"/>
+  </Node>
+
+  <Node name="Instrument" gravity="0 0 0">
+    <EulerImplicitSolver/>
+    <CGLinearSolver iterations="25" tolerance="1e-5" threshold="1e-05"/>
+    <MechanicalObject template="Rigid3d" position="@/OmegaDriver.pose"/>
+    <UniformMass totalMass="0.1"/>
+    <UncoupledConstraintCorrection/>
+    <LCPForceFeedback activate="1" forceCoef="0.9"/>
+    <RestShapeSpringsForceField stiffness="1000" angularStiffness="1000" external_rest_shape="@/Proxy" points="0"/>
+
+    <Node name="VisualModel">
+      <MeshOBJLoader name="Loader" filename="mesh/dental_instrument_light.obj"/>
+      <VisualModelImpl name="Visual" src="@Loader"/>
+      <RigidMapping/>
+    </Node>
+
+    <Node name="CollisionModel">
+      <MeshOBJLoader name="Loader" filename="mesh/dental_instrument_light.obj"/>
+      <MeshTopology src="@Loader"/>
+      <MechanicalObject src="@Loader"/>
+      <LineCollisionModel/>
+      <PointCollisionModel/>
+      <RigidMapping/>
+    </Node>
   </Node>
 
 </Node>

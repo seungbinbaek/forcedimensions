@@ -23,6 +23,9 @@ void * OmegaDriver::updateForceFeedback(void *args) {
     OmegaDriver *driver = reinterpret_cast<OmegaDriver*>(args);
 
     for (;;) {
+        if (driver->shouldStop)
+            break;
+
         if (!driver->active)
             continue;
 
@@ -30,7 +33,7 @@ void * OmegaDriver::updateForceFeedback(void *args) {
 
         Vec3 fdev(0, 0, 0);
 
-        if (driver->d_computeForceFeedback.getValue() && driver->forceFeedback) {
+        if (driver->firstStepDone && driver->d_computeForceFeedback.getValue() && driver->forceFeedback) {
             double fx, fy, fz;
             auto pos = driver->devicePose.getCenter();
 
@@ -84,6 +87,9 @@ OmegaDriver::OmegaDriver() :
 
 OmegaDriver::~OmegaDriver()
 {
+    active = false;
+    shouldStop = true;
+    dhdSleep(0.1);  // 스레드가 shouldStop 플래그를 확인할 시간
     dhdClose();
 }
 
@@ -187,6 +193,7 @@ void OmegaDriver::onBeginAnimationStep(const double)
     if (deviceRunning) {
         if (!active)
             active = true;  // signal haptic thread to start reading device
+        firstStepDone = true;  // LCP 람다 초기화 완료 — 이제 힘 계산 허용
         updatePose();
     }
 }

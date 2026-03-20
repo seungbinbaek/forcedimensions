@@ -5,6 +5,7 @@
 #include <sofa/component/controller/Controller.h>
 #include <sofa/component/haptics/ForceFeedback.h>
 
+#include <atomic>
 #include <mutex>
 #include <sofa/simulation/Simulation.h>
 
@@ -43,6 +44,8 @@ class SOFA_FORCEDIMENSIONS_API OmegaDriver : public sofa::component::controller:
   static void * updateForceFeedback(void *args);
 
   bool active;
+  std::atomic<bool> shouldStop{false};
+  std::atomic<bool> firstStepDone{false};
   bool deviceInitialized;
   bool deviceRunning;
   int error;
