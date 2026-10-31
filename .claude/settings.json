@@ -1,0 +1,14 @@
+{
+  "env": {
+    "CLAUDE_CODE_SUBAGENT_MODEL": "opus"
+  },
+  "permissions": {
+    "deny": [
+      "Read(./build/**)",
+      "Read(./build-*/**)",
+      "Read(./dist/**)",
+      "Read(./.env)",
+      "Read(./.env.*)"
+    ]
+  }
+}
