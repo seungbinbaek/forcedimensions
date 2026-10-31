@@ -39,19 +39,27 @@ Get-ChildItem -Directory (Join-Path $RepoDir ".claude\skills") | ForEach-Object 
 }
 Write-Host "3/4 skills 설치"
 
-# 4. settings.json 병합
+# 4. settings.json 병합 (Windows PowerShell 5.1 호환: -AsHashtable 사용 안 함)
 $Settings = Join-Path $ClaudeHome "settings.json"
 $RuleAbs = (Join-Path $RepoDir ".claude\rules\routing.md")
 Backup-Item $Settings
-$data = @{}
+$data = [PSCustomObject]@{}
 if (Test-Path $Settings) {
-  $raw = Get-Content -Raw $Settings
-  if ($raw.Trim()) { $data = $raw | ConvertFrom-Json -AsHashtable }
+  $raw = Get-Content -Raw -Encoding UTF8 $Settings
+  if ($raw -and $raw.Trim()) { $data = $raw | ConvertFrom-Json }
 }
-if (-not $data.ContainsKey("env")) { $data["env"] = @{} }
-if (-not $data["env"].ContainsKey("CLAUDE_CODE_SUBAGENT_MODEL")) { $data["env"]["CLAUDE_CODE_SUBAGENT_MODEL"] = "opus" }
-if (-not $data.ContainsKey("claudeMdExcludes")) { $data["claudeMdExcludes"] = @() }
-if ($data["claudeMdExcludes"] -notcontains $RuleAbs) { $data["claudeMdExcludes"] = @($data["claudeMdExcludes"]) + $RuleAbs }
+if (-not ($data.PSObject.Properties.Name -contains "env")) {
+  $data | Add-Member -NotePropertyName env -NotePropertyValue ([PSCustomObject]@{})
+}
+if (-not ($data.env.PSObject.Properties.Name -contains "CLAUDE_CODE_SUBAGENT_MODEL")) {
+  $data.env | Add-Member -NotePropertyName CLAUDE_CODE_SUBAGENT_MODEL -NotePropertyValue "opus"
+}
+if (-not ($data.PSObject.Properties.Name -contains "claudeMdExcludes")) {
+  $data | Add-Member -NotePropertyName claudeMdExcludes -NotePropertyValue @()
+}
+$ex = @($data.claudeMdExcludes)
+if ($ex -notcontains $RuleAbs) { $ex += $RuleAbs }
+$data.claudeMdExcludes = $ex
 $data | ConvertTo-Json -Depth 10 | Set-Content -Encoding UTF8 $Settings
 Write-Host "4/4 settings.json 병합: env.CLAUDE_CODE_SUBAGENT_MODEL=opus, claudeMdExcludes += $RuleAbs"
 

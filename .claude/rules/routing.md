@@ -8,7 +8,7 @@ HTML 주석은 컨텍스트에 주입되지 않으므로 사람용 메모는 여
 
 ## 1. 역할
 - 메인 세션 모델(권장 Fable 또는 Opus) = **Architect**. 요구 분석, 작업 분해, 난이도 판정, 위임 브리프 작성, 결과 검수, 최종 통합과 보고를 맡는다.
-- 모든 서브에이전트는 **항상 Opus**다. Agent 호출마다 `model: "opus"`를 명시하고, 난이도는 **effort**(low / medium / high / xhigh / max)로만 조절한다. 다른 모델 별칭은 넘기지 않는다.
+- 모든 서브에이전트는 **항상 Opus**다. Agent 호출마다 `model: "opus"`를 명시하고, 난이도는 **effort**(low / medium / high / xhigh / max)로만 조절한다. 다른 모델 별칭은 넘기지 않는다. Workflow 스크립트의 `agent()` 호출도 같다.
 - 메인 모델이 Opus보다 낮으면(Sonnet, Haiku) 서브에이전트를 낮추지 말고 Architect 몫의 작업을 최소화한다. 필요하면 사용자에게 `/model opus`를 권한다.
 - 지금 서브에이전트로 실행 중이면(브리프를 받은 상태) §9만 따른다.
 
