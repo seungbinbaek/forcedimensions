@@ -5,11 +5,12 @@
 |---|---|---|
 | `CLAUDE.md` | 이 프로젝트 메모(빌드, 불변 조건, 관례) | 매 세션 |
 | `.claude/rules/routing.md` | 운영 정책: 메인 세션 = Architect, 서브에이전트 = 항상 Opus, 난이도는 effort로 | 매 세션 (CLAUDE.md와 같은 우선순위) |
-| `.claude/agents/*.md` | Opus 에이전트 5종: `Explore`(탐색, low), `worker`(구현, medium), `verifier`(검증, high), `researcher`(조사, medium), `designer`(시각 산출물, high) | 해당 에이전트를 띄울 때만 |
+| `.claude/agents/*.md` | Opus 에이전트 6종: `Explore`(탐색, low), `Plan`(계획 조사, high), `worker`(구현, medium), `verifier`(검증, high), `researcher`(조사, medium), `designer`(시각 산출물, high). Explore와 Plan은 같은 이름의 내장 에이전트를 덮어써 Opus로 고정한다 | 해당 에이전트를 띄울 때만 |
 | `.claude/skills/delegate` | 브리프 템플릿, effort 판정 워크시트, 승격 사다리 | 호출할 때만 (설명 한 줄만 상시) |
 | `.claude/skills/skillify` | "스킬로 만들어줘" 절차 | 호출할 때만 |
 | `.claude/skills/global-install` | "전역 적용해줘" 절차 | 호출할 때만 |
-| `.claude/settings.json` | 서브에이전트 기본 모델 Opus, 잡음 파일 읽기 차단 | 매 세션 |
+| `.claude/settings.json` | 서브에이전트 기본 모델 Opus, 자동 포크 끔, Agent 호출에 `model: "opus"`가 없으면 막는 PreToolUse 훅, 잡음 파일 읽기 차단 | 매 세션 |
+| `.claude/hooks/require-opus.sh` | 위 훅의 스크립트. python3가 없으면 통과시킨다(fail-open) | Agent 호출마다 |
 | `scripts/install-claude-global.*` | 위 파일을 `~/.claude`에 복사해 모든 로컬 세션에 적용 | 수동 1회 |
 
 ## 동작 원리 (공식 문서 기준, 2026-10 확인)
@@ -18,8 +19,14 @@
 - `CLAUDE_CODE_EFFORT_LEVEL` 환경변수는 모든 effort 설정을 덮어쓴다. 절대 설정하지 않는다.
 - `CLAUDE_CODE_SUBAGENT_MODEL=opus`는 모델이 지정되지 않은 서브에이전트의 기본값이다. 강제 고정이 필요하면 `CLAUDE_CODE_SUBAGENT_MODEL_FORCE=1`을 추가할 수 있지만, 그 모드에서 에이전트별 effort가 유지되는지는 문서에 없으므로 `/tasks`로 확인 후 사용한다.
 - Opus 5.5의 기본 effort는 medium, Fable 5.1은 high다.
+- effort 판정은 점수제다. ① 범위 3파일 이상 ② 원인·방법 불명 ③ 런타임에서만 드러나는 실패 비용 ④ 트레이드오프 판단, 각 0/1점. 합계 0→low, 1→medium, 2→high, 3~4→xhigh. ③이 1이면 최소 high. "자동 검사 없음"은 effort가 아니라 검증 경로(verifier 필수)를 바꾼다.
+- 포크(`/subtask`, 포크 모드)와 번들 스킬(`/code-review` 등)은 메인 모델로 돌기 때문에 "서브에이전트는 항상 Opus"에서 벗어난다. 그래서 `CLAUDE_CODE_FORK_SUBAGENT=0`으로 자동 포크를 끄고, 리뷰는 verifier 에이전트로 한다. `/subtask`를 직접 치면 여전히 포크가 뜬다(메인 모델).
+- worker, verifier, researcher, designer는 `disallowedTools: Agent`로 중첩 위임이 막혀 있다. Explore는 Read, Grep, Glob만 쓸 수 있어 읽기 전용이 하네스 수준에서 보장된다.
 - 사용자 레벨 `~/.claude/rules/*.md`(paths 없음)는 이 컴퓨터의 모든 프로젝트에 로드된다. 그래서 전역 설치는 `routing.md`를 그 위치로 복사하는 방식이다.
-- `routing.md`가 사용자 레벨과 프로젝트 양쪽에 있으면 이 저장소에서 두 번 로드되므로, 설치 스크립트가 저장소 쪽 절대 경로를 `claudeMdExcludes`에 넣는다.
+- `routing.md`가 사용자 레벨과 프로젝트 양쪽에 있으면 이 저장소에서 두 번 로드되므로, 설치 스크립트가 저장소 쪽 절대 경로를 `claudeMdExcludes`에 넣는다. 그 결과 이 컴퓨터에서는 전역 사본이 쓰이므로, 저장소의 정책이나 스킬을 고치거나 pull한 뒤에는 설치 스크립트를 다시 실행해야 한다.
+- 프로젝트 규칙은 서브에이전트에도 전달된다. 그래서 routing.md는 핵심 구조만 담은 코어로 유지하고 긴 절차는 delegate 스킬(호출 시에만 로드)에 둔다. 커스텀 Explore의 `omitClaudeMd`가 rules 파일까지 제외하는지는 문서에 없으므로, 궁금하면 InstructionsLoaded 훅으로 확인한다.
+- CLAUDE.md는 안내일 뿐 강제가 아니다(공식 문서). 그래서 "항상 Opus"는 세 겹으로 고정한다: 에이전트 파일의 `model: opus`, settings의 `CLAUDE_CODE_SUBAGENT_MODEL=opus`, 그리고 `model: "opus"` 없는 Agent 호출을 막는 PreToolUse 훅(막히면 Claude가 이유를 보고 다시 호출한다).
+- 다른 저장소의 클라우드 세션에는 전역 설치가 미치지 않는다. 그 저장소에 `.claude/rules/routing.md`와 `.claude/agents/`를 커밋하거나, 클라우드 환경의 setup 스크립트에서 이 저장소를 클론해 설치 스크립트를 실행해야 한다.
 
 ## 자주 쓰는 확인 명령
 - `/context` 로드된 메모리 파일과 컨텍스트 사용량
@@ -28,6 +35,10 @@
 - `/effort status` 메인 세션 effort
 - `/doctor prompt-audit` CLAUDE.md와 규칙의 오래된 항목, 모순 검사
 - `claude plugin validate .claude/agents` 에이전트 파일 문법 검사 (오타는 조용히 무시되므로 수정 후 꼭 실행)
+
+## 버전 요구
+- 호출 시 effort 지정: Claude Code 2.1.292 이상. 그 아래에서는 에이전트 파일의 effort 기본값만 적용된다.
+- `omitClaudeMd`: 2.1.271 이상. `CLAUDE_CODE_SUBAGENT_MODEL`이 프런트매터보다 낮은 우선순위로 바뀐 것: 2.1.251. 낮은 버전이면 `claude update`.
 
 ## 사용자 오버라이드 문구
 - "effort high로 해줘" / "xhigh로" : 그 요청의 위임 effort 지정
@@ -43,4 +54,4 @@
 /plugin install document-skills@anthropic-agent-skills
 /plugin install example-skills@anthropic-agent-skills
 ```
-두 번째 줄이 pptx, docx, pdf, xlsx, 세 번째 줄이 theme-factory, frontend-design, canvas-design, skill-creator 등이다. 클라우드 세션에는 문서 스킬이 이미 동기화돼 있다.
+두 번째 줄이 docx, pdf, pptx, xlsx(공식 확인). 세 번째 줄은 예시 스킬 묶음이며 정확한 목록은 설치 후 `/skills`에서 확인한다. 플러그인 스킬은 `document-skills:pptx`처럼 네임스페이스가 붙으므로 에이전트들은 목록에서 이름을 찾아 호출하도록 돼 있다.

@@ -1,6 +1,22 @@
 {
   "env": {
-    "CLAUDE_CODE_SUBAGENT_MODEL": "opus"
+    "CLAUDE_CODE_SUBAGENT_MODEL": "opus",
+    "CLAUDE_CODE_FORK_SUBAGENT": "0"
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/require-opus.sh\"",
+            "timeout": 10,
+            "statusMessage": "서브에이전트 모델 확인 (Opus 고정)"
+          }
+        ]
+      }
+    ]
   },
   "permissions": {
     "deny": [
