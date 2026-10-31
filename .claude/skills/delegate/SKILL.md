@@ -4,17 +4,17 @@ description: Architect용 위임 브리프 템플릿과 effort 판정 루브릭.
 ---
 # delegate: 위임 브리프와 effort 판정
 
-이 스킬은 routing.md §4~§7을 실행 수준으로 풀어 쓴 것이다. 매 위임마다 아래 워크시트로 effort를 정하고 템플릿을 채운다.
+이 스킬은 CLAUDE.md 운영 정책 §3~§5를 실행 수준으로 풀어 쓴 것이다. 매 위임마다 아래 워크시트로 effort를 정하고 템플릿을 채운다.
 
-## 1. effort 판정 워크시트 (routing.md §4와 동일)
+## 1. effort 판정 워크시트 (CLAUDE.md §4와 동일)
 각 항목을 0 또는 1로 매기고 합계로 등급을 정한다.
 
-| 항목 | 1점 조건 | 이 저장소에서의 예 |
+| 항목 | 1점 조건 | 예 |
 |---|---|---|
-| ① 범위 | 파일 3개 이상, 또는 모듈 경계(드라이버 ↔ 소켓 ↔ 씬)를 넘는다 | OmegaDriver와 SOFASocketSender를 함께 바꾸는 변경 |
+| ① 범위 | 파일 3개 이상, 또는 모듈 경계(예: API ↔ 저장소 ↔ UI)를 넘는다 | 스키마와 API와 화면을 함께 바꾸는 변경 |
 | ② 명세 | 원인이나 방법이 불명하다 | "가끔 죽는다", "느리다" |
-| ③ 실패 비용 | 동시성, 보안, 데이터, 장치처럼 런타임에서만 드러난다 | 햅틱 스레드, dhdSetForce 축 순서, 소켓 재연결 |
-| ④ 판단 | 트레이드오프 비교가 필요하다 | 폴링 vs 콜백, 프로토콜 변경 |
+| ③ 실패 비용 | 동시성, 보안, 데이터, 외부 시스템처럼 런타임에서만 드러난다 | 백그라운드 스레드, 인증, 마이그레이션, 결제·전송 |
+| ④ 판단 | 트레이드오프 비교가 필요하다 | 폴링 vs 콜백, 라이브러리 선택, 프로토콜 변경 |
 
 합계 0 → E1 low, 1 → E2 medium, 2 → E3 high, 3~4 → E4 xhigh.
 - 보정: ③=1이면 최소 E3. 모호한 요구, 아키텍처, 정책 변경은 A(Architect 직접). 확신이 없으면 한 단계 위.
@@ -24,7 +24,7 @@ description: Architect용 위임 브리프 템플릿과 effort 판정 루브릭.
 
 ## 2. 호출 방법
 - Agent 도구 호출에 `subagent_type`(worker / verifier / researcher / designer / Explore), `model: "opus"`, `effort: "<등급>"`을 함께 넘긴다. 에이전트 파일의 effort는 기본값이고 호출 시 값이 우선한다.
-- 독립 작업은 한 응답에서 여러 Agent 호출로 병렬 실행한다(routing.md: 보통 5개 이내).
+- 독립 작업은 한 응답에서 여러 Agent 호출로 병렬 실행한다(CLAUDE.md: 보통 5개 이내).
 - 결과를 이어서 쓸 에이전트는 완료 후 SendMessage로 같은 에이전트에 후속 지시를 보낸다(컨텍스트 유지).
 - verifier 브리프는 "반박하라"로 시작하고, 무엇을 공격할지(경계값, 스레드 시작·정지 순서, 플래그 가시성, open/close 짝, 헤더와 구현 불일치)를 적는다. verifier effort는 실행 effort 이상, 최소 high.
 - 모델과 effort가 의도대로 적용됐는지는 사용자가 `/tasks`로 볼 수 있다. 처음 몇 번은 확인을 권한다.
@@ -34,7 +34,7 @@ description: Architect용 위임 브리프 템플릿과 effort 판정 루브릭.
 [목표] 한 문장. 무엇이 완료되면 끝인지.
 [배경] 왜 하는지 두 줄 이내. 사용자가 이미 결정한 사항.
 [입력] 파일 경로:줄 범위, 관련 심볼, 재현 명령, 참고 자료 경로.
-[제약] 건드리지 말 파일, 유지할 동작, 스타일 규칙, 불변 조건(CLAUDE.md 항목 인용).
+[제약] 건드리지 말 파일, 유지할 동작, 스타일 규칙, 프로젝트 규칙(해당 항목 인용).
 [완료 기준] 검증 가능한 항목 번호 목록. 실행할 검사 명령.
 [반환 형식] 결론 / 변경 파일 / 실행한 검사와 출력 / 확신도 / 열린 질문. 과정 서술 금지.
 [금지] push, 삭제, 범위 밖 수정, 설정 변경, 외부 전송, 서브에이전트 생성 (허용할 항목만 명시).
@@ -44,12 +44,12 @@ description: Architect용 위임 브리프 템플릿과 effort 판정 루브릭.
 서브에이전트는 대화 기록, 이미 읽은 파일, 호출된 스킬을 보지 못한다. 필요한 사실은 전부 브리프에 적는다. 긴 파일은 경로만 주고 읽게 한다.
 
 ## 4. 예시
-**E1 (worker, low)**: "README의 OmegaDriver 속성 표를 OmegaDriver.h의 Data 필드와 이름·설명이 일치하게 맞춘다. 입력: README.md, src/ForceDimensions/OmegaDriver.h. 완료 기준: 헤더의 모든 d_ 필드가 표에 있고 설명이 initData 문자열과 같다. 반환: 변경 파일과 비교 표." (한 줄 오타 수정은 Architect가 직접 한다.)
-**E2 (worker, medium)**: "`SOFASocketSender`에 재연결 시도 횟수 Data 필드 `maxRetries`(기본 3)를 추가한다. 입력: src/ForceDimensions/SOFASocketSender.{h,cpp}, `connectToUE`. 제약: 패킷 포맷 변경 금지, 기존 Data 네이밍(`d_` 접두) 유지. 완료 기준: 1) 필드가 씬에서 설정 가능 2) 실패 시 maxRetries 번 재시도 후 경고 로그 3) 빌드는 불가하므로 컴파일 오류 가능성을 스스로 점검. 반환: 표준."
-**E3 (worker, high → verifier, high)**: "햅틱 스레드가 종료 시 간헐적으로 크래시한다. 입력: OmegaDriver.cpp `updateForceFeedback`, 소멸자, `shouldStop`. 제약: 불변 조건(소멸자 순서, 플래그 제어) 유지. 불변 조건을 바꿔야만 풀리면 `ESCALATE: 불변 조건 변경 필요 <항목, 근거>`로 멈춘다. 완료 기준: 1) 경쟁 조건을 코드 근거로 특정 2) 최소 수정 3) 왜 안전한지 설명. 반환: 표준. 완료 후 verifier에 '반박하라: 이 수정이 여전히 크래시할 시나리오를 찾아라'로 교차 검증."
+**E1 (worker, low)**: "README의 설정 옵션 표를 config.ts의 실제 옵션 이름·기본값과 일치하게 맞춘다. 입력: README.md, src/config.ts. 완료 기준: config.ts의 모든 옵션이 표에 있고 기본값이 같다. 반환: 변경 파일과 비교 표." (한 줄 오타 수정은 Architect가 직접 한다.)
+**E2 (worker, medium)**: "HTTP 클라이언트에 재시도 횟수 옵션 `maxRetries`(기본 3)를 추가한다. 입력: src/net/client.ts `request()`, tests/net/client.test.ts. 제약: 공개 API 시그니처 유지, 기존 옵션 네이밍 유지. 완료 기준: 1) 옵션으로 설정 가능 2) 실패 시 maxRetries 번 재시도 후 오류 3) 재시도 테스트 추가, `npm test -- client` 통과. 반환: 표준."
+**E3 (worker, high → verifier, high)**: "백그라운드 워커가 종료 시 간헐적으로 크래시한다. 입력: src/worker/loop.ts, 종료 핸들러, `stopFlag`. 제약: 종료 순서(플래그 → 대기 → 자원 해제) 유지. 설계를 바꿔야만 풀리면 `ESCALATE: 설계 변경 필요 <항목, 근거>`로 멈춘다. 완료 기준: 1) 경쟁 조건을 코드 근거로 특정 2) 최소 수정 3) 왜 안전한지 설명 4) 재현 테스트 추가. 반환: 표준. 완료 후 verifier에 '반박하라: 이 수정이 여전히 크래시할 시나리오를 찾아라'로 교차 검증."
 **연구 (researcher, medium)**: "논문 PDF를 발표용으로 분석한다. 입력: @papers/x.pdf. 반환: 기본 구조(문제, 주장, 방법, 결과 숫자, 한계, 발표용 그림 목록) + 페이지 출처."
 
-## 5. 승격 사다리 (routing.md §4와 동일)
+## 5. 승격 사다리 (CLAUDE.md §4와 동일)
 1. 실패 원인이 브리프 부족이면: 같은 effort에서 브리프를 보완해 1회만 재시도.
 2. 그 외의 실패, `ESCALATE:`, 검증 실패, 확신 낮음, 브리프와 모순: 한 단계 위 effort로, 실패 내용과 시도한 것을 [승격 이력]에 붙여 재위임. 같은 프롬프트를 다시 보내지 않는다.
 3. xhigh에서도 실패: max로 올리지 말고 Architect가 직접 분석한다. 사용자 보고에 이력을 남긴다.
@@ -57,5 +57,5 @@ description: Architect용 위임 브리프 템플릿과 effort 판정 루브릭.
 
 ## 6. 사용자 지시 해석
 - "effort X로": 이 요청의 주 실행 에이전트(worker / designer / researcher)에 X. Explore는 low 유지, verifier는 X와 high 중 높은 쪽. 메인 세션 effort를 뜻한 것 같으면 사용자에게 `/effort X`를 권한다. 지시는 같은 작업의 후속 턴까지 유지하고 새 작업에서는 초기화한다.
-- "직접 해": 이 요청의 실행을 위임하지 않는다. "위임해": routing.md §3.2의 직접 수정 예외를 끈다. 두 경우 모두 해석, 분해, 검수, 보고는 Architect가 한다.
+- "직접 해": 이 요청의 실행을 위임하지 않는다. "위임해": CLAUDE.md §3.2의 직접 수정 예외를 끈다. 두 경우 모두 해석, 분해, 검수, 보고는 Architect가 한다.
 - 메인이 Sonnet이나 Haiku일 때: 설계 대안 비교와 high 이상 작업의 분해는 worker(high)에 "계획만, 수정 금지" 브리프로 위임할 수 있다. 최종 검수는 verifier에 맡기고 해석, 질문 선정, 보고는 메인이 한다.

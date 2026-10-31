@@ -1,4 +1,4 @@
-﻿# Windows PowerShell 5.1 / PowerShell 7 용. 이 저장소의 Claude Code 운영 정책, 에이전트, 스킬, 훅을 사용자 전역(~/.claude)에 설치한다.
+﻿# Windows PowerShell 5.1 / PowerShell 7 용. Claude Code 운영 정책(CLAUDE.md), 에이전트, 스킬, 훅을 사용자 전역(~/.claude)에 설치한다. 프로젝트와 무관하다.
 # 실행: powershell -ExecutionPolicy Bypass -File scripts/install-claude-global.ps1
 # 이 파일은 한글 문자열 때문에 UTF-8 BOM 으로 저장돼 있다(Windows PowerShell 5.1 이 BOM 없는 UTF-8 을 ANSI 로 읽는다).
 $ErrorActionPreference = "Stop"
@@ -20,13 +20,23 @@ function Backup-Item($Path) {
 function To-Slash($p) { return ($p -replace '\\', '/') }   # claudeMdExcludes 와 훅 명령은 슬래시 경로로
 
 Write-Host "설치 대상: $ClaudeHome"
-foreach ($d in @("rules", "agents", "skills", "hooks")) { New-Item -ItemType Directory -Force (Join-Path $ClaudeHome $d) | Out-Null }
+foreach ($d in @("agents", "skills", "hooks")) { New-Item -ItemType Directory -Force (Join-Path $ClaudeHome $d) | Out-Null }
 
-# 1. 운영 정책 코어
-$RuleDst = Join-Path $ClaudeHome "rules\routing.md"
-Backup-Item $RuleDst
-Copy-Item -Force (Join-Path $RepoDir ".claude\rules\routing.md") $RuleDst
-Write-Host "1/6 rules/routing.md"
+# 1. 운영 정책 (저장소 CLAUDE.md) → ~/.claude/CLAUDE.md 의 마커 블록으로 병합 (사용자의 다른 내용은 보존, 멱등)
+$Umd    = Join-Path $ClaudeHome "CLAUDE.md"
+$policy = [System.IO.File]::ReadAllText((Join-Path $RepoDir "CLAUDE.md"), [System.Text.Encoding]::UTF8).Trim()
+$Block  = "<!-- claude-routing:policy:start -->`n" + $policy + "`n<!-- claude-routing:policy:end -->"
+Backup-Item $Umd
+$cur = if (Test-Path $Umd) { [System.IO.File]::ReadAllText($Umd, [System.Text.Encoding]::UTF8) } else { "" }
+if ($cur -match 'claude-routing:policy:start') {
+  $cur = [regex]::Replace($cur, '(?s)<!-- claude-routing:policy:start -->.*?<!-- claude-routing:policy:end -->', [System.Text.RegularExpressions.MatchEvaluator]{ param($m) $Block })
+} else {
+  if ($cur.Length -gt 0 -and -not $cur.EndsWith("`n")) { $cur += "`n" }
+  if ($cur.Length -gt 0) { $cur += "`n" }
+  $cur += $Block + "`n"
+}
+[System.IO.File]::WriteAllText($Umd, $cur, $Utf8NoBom)
+Write-Host "1/5 ~/.claude/CLAUDE.md: 운영 정책 블록"
 
 # 2. 에이전트
 Get-ChildItem (Join-Path $RepoDir ".claude\agents\*.md") | ForEach-Object {
@@ -34,7 +44,7 @@ Get-ChildItem (Join-Path $RepoDir ".claude\agents\*.md") | ForEach-Object {
   Backup-Item $dst
   Copy-Item -Force $_.FullName $dst
 }
-Write-Host "2/6 agents"
+Write-Host "2/5 agents"
 
 # 3. 스킬 (전역 사본의 global-install 은 이 저장소의 절대 경로를 가리키게 바꾼다)
 Get-ChildItem -Directory (Join-Path $RepoDir ".claude\skills") | ForEach-Object {
@@ -49,17 +59,17 @@ if (Test-Path $GI) {
   $txt = $txt.Replace("scripts/install-claude-global", (To-Slash $RepoDir) + "/scripts/install-claude-global")
   [System.IO.File]::WriteAllText($GI, $txt, $Utf8NoBom)
 }
-Write-Host "3/6 skills"
+Write-Host "3/5 skills"
 
 # 4. 훅 스크립트 (Claude Code 는 Windows 에서도 Git Bash 로 command 훅을 실행한다)
 $HookDst = Join-Path $ClaudeHome "hooks\require-opus.sh"
 Backup-Item $HookDst
 Copy-Item -Force (Join-Path $RepoDir ".claude\hooks\require-opus.sh") $HookDst
-Write-Host "4/6 hooks/require-opus.sh"
+Write-Host "4/5 hooks/require-opus.sh"
 
 # 5. settings.json 병합 (PowerShell 5.1 호환: -AsHashtable 사용 안 함, BOM 없이 저장)
 $Settings = Join-Path $ClaudeHome "settings.json"
-$RuleAbs  = To-Slash (Join-Path $RepoDir ".claude\rules\routing.md")
+$RuleAbs  = To-Slash (Join-Path $RepoDir "CLAUDE.md")   # 이 저장소 안에서 정책이 두 번 로드되지 않게 제외
 $HookCmd  = 'bash "' + (To-Slash $HookDst) + '"'
 Backup-Item $Settings
 $data = [PSCustomObject]@{}
@@ -68,7 +78,7 @@ if (Test-Path $Settings) {
   $raw = [System.IO.File]::ReadAllText($Settings, [System.Text.Encoding]::UTF8)
   if ($raw -and $raw.Trim()) {
     try { $data = $raw | ConvertFrom-Json }
-    catch { $skipSettings = $true; Write-Host "5/6 건너뜀: $Settings 가 순수 JSON 이 아니다. 아래 항목을 직접 추가하라." }
+    catch { $skipSettings = $true; Write-Host "5/5 건너뜀: $Settings 가 순수 JSON 이 아니다. 아래 항목을 직접 추가하라." }
   }
 }
 if (-not $skipSettings) {
@@ -97,7 +107,7 @@ if (-not $skipSettings) {
 
   $json = $data | ConvertTo-Json -Depth 20
   [System.IO.File]::WriteAllText($Settings, $json + "`n", $Utf8NoBom)
-  Write-Host "5/6 settings.json: env.CLAUDE_CODE_SUBAGENT_MODEL=opus, env.CLAUDE_CODE_FORK_SUBAGENT=0, PreToolUse 훅, claudeMdExcludes += $RuleAbs"
+  Write-Host "5/5 settings.json: env.CLAUDE_CODE_SUBAGENT_MODEL=opus, env.CLAUDE_CODE_FORK_SUBAGENT=0, PreToolUse 훅, claudeMdExcludes += $RuleAbs"
   if ($data.env.PSObject.Properties.Name -contains "CLAUDE_CODE_EFFORT_LEVEL") { Write-Host "경고: settings.json env 에 CLAUDE_CODE_EFFORT_LEVEL 이 있다. 에이전트별 effort 가 모두 무시되므로 지우기를 권한다." }
 } else {
   Write-Host ('  "env": { "CLAUDE_CODE_SUBAGENT_MODEL": "opus", "CLAUDE_CODE_FORK_SUBAGENT": "0" },')
@@ -105,29 +115,9 @@ if (-not $skipSettings) {
   Write-Host ('  "claudeMdExcludes": [ "' + $RuleAbs + '" ]')
 }
 
-# 6. ~/.claude/CLAUDE.md 에 Compact instructions 블록 (마커로 멱등)
-$Umd = Join-Path $ClaudeHome "CLAUDE.md"
-$Block = @"
-<!-- claude-routing:compact:start -->
-# Compact instructions
-압축 시 유지: 현재 작업 목표, 배정한 effort와 승격 이력, 변경 파일 목록, 마지막 검증 명령과 결과, 열린 질문. 버릴 것: 파일 본문, 중간 서술, 해결된 오류 로그.
-<!-- claude-routing:compact:end -->
-"@
-Backup-Item $Umd
-$cur = if (Test-Path $Umd) { [System.IO.File]::ReadAllText($Umd, [System.Text.Encoding]::UTF8) } else { "" }
-if ($cur -match 'claude-routing:compact:start') {
-  $cur = [regex]::Replace($cur, '(?s)<!-- claude-routing:compact:start -->.*?<!-- claude-routing:compact:end -->', $Block.TrimEnd())
-} else {
-  if ($cur.Length -gt 0 -and -not $cur.EndsWith("`n")) { $cur += "`n" }
-  if ($cur.Length -gt 0) { $cur += "`n" }
-  $cur += $Block
-}
-[System.IO.File]::WriteAllText($Umd, $cur, $Utf8NoBom)
-Write-Host "6/6 ~/.claude/CLAUDE.md: Compact instructions"
-
 if ($env:CLAUDE_CODE_EFFORT_LEVEL) { Write-Host "경고: 환경변수 CLAUDE_CODE_EFFORT_LEVEL=$($env:CLAUDE_CODE_EFFORT_LEVEL) 이 설정돼 있다. 에이전트별 effort 가 모두 무시되므로 해제를 권한다." }
 
 Write-Host ""
 Write-Host "완료. 백업: $BackupDir (변경된 파일이 있을 때만 생성)"
-Write-Host "새 세션에서 확인: /context (routing.md 로드), claude plugin validate ~/.claude/agents, /tasks (위임 후 Opus + effort)"
+Write-Host "새 세션에서 확인: /context (~/.claude/CLAUDE.md 로드), claude plugin validate ~/.claude/agents, /tasks (위임 후 Opus + effort)"
 Write-Host "저장소의 정책이나 스킬을 고치거나 pull 한 뒤에는 이 스크립트를 다시 실행한다."
