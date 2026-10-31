@@ -1,6 +1,6 @@
 # Claude Code 운영 설정 (사람용 설명, 컨텍스트에 로드되지 않음)
 
-프로젝트와 무관한 범용 묶음이다. `CLAUDE.md`, `.claude/`(agents, skills, hooks, settings.json), `scripts/` 세 가지를 어느 저장소에 복사해도 그대로 동작하고, 설치 스크립트를 한 번 실행하면 그 컴퓨터의 모든 Claude Code 세션에 적용된다. 이 저장소에만 해당하는 메모는 `.claude/rules/forcedimensions.md`에 경로 조건부로 따로 두었고 묶음에 포함되지 않는다.
+프로젝트와 무관한 범용 묶음이다. `CLAUDE.md`, `.claude/`(agents, skills, hooks, settings.json), `scripts/`, `.gitattributes`를 어느 저장소에 복사해도 그대로 동작하고, 설치 스크립트를 한 번 실행하면 그 컴퓨터의 모든 Claude Code 세션에 적용된다. 저장소 전용 메모는 `.claude/rules/<프로젝트>.md`에 `paths:` 프런트매터로 경로 조건부로 두고 묶음에는 포함하지 않는다(이 저장소의 예: `forcedimensions.md`).
 
 ## 구조
 | 파일 | 역할 | 로드 시점 |
@@ -25,7 +25,7 @@
 - 포크(`/subtask`, 포크 모드)와 번들 스킬(`/code-review` 등)은 메인 모델로 돌기 때문에 "서브에이전트는 항상 Opus"에서 벗어난다. 그래서 `CLAUDE_CODE_FORK_SUBAGENT=0`으로 자동 포크를 끄고, 리뷰는 verifier 에이전트로 한다. `/subtask`를 직접 치면 여전히 포크가 뜬다(메인 모델).
 - worker, verifier, researcher, designer는 `disallowedTools: Agent`로 중첩 위임이 막혀 있다. Explore와 Plan은 Read, Grep, Glob만 쓸 수 있어 읽기 전용이 하네스 수준에서 보장된다.
 - 사용자 레벨 `~/.claude/CLAUDE.md`는 이 컴퓨터의 모든 프로젝트에 로드된다. 전역 설치는 이 저장소의 CLAUDE.md를 그 파일 안의 마커 블록으로 병합하는 방식이라 사용자의 기존 내용은 보존된다.
-- 정책이 사용자 레벨과 프로젝트 양쪽에 있으면 이 저장소에서 두 번 로드되므로, 설치 스크립트가 저장소 쪽 CLAUDE.md 절대 경로를 `claudeMdExcludes`에 넣는다. 그 결과 이 컴퓨터에서는 전역 사본이 쓰이므로, 정책이나 스킬을 고치거나 pull한 뒤에는 설치 스크립트를 다시 실행해야 한다.
+- 정책이 사용자 레벨과 프로젝트 양쪽에 있으면 이 저장소에서 두 번 로드되므로, 설치 스크립트가 저장소 쪽 CLAUDE.md 절대 경로를 `claudeMdExcludes`에 넣는다. 그 결과 이 컴퓨터에서는 전역 사본이 쓰이므로, 정책이나 스킬을 고치거나 pull한 뒤에는 설치 스크립트를 다시 실행해야 한다. 묶음을 커밋한 다른 저장소에서는 그 저장소의 `.claude/settings.local.json`에 같은 방식으로 `claudeMdExcludes`를 넣는다(global-install 스킬이 안내한다).
 - 프로젝트 CLAUDE.md는 서브에이전트에도 전달된다. 그래서 정책은 핵심 구조만 담은 코어로 유지하고 긴 절차는 delegate 스킬(호출 시에만 로드)에 둔다. 커스텀 Explore의 `omitClaudeMd`는 CLAUDE.md를 제외한다(문서 확인).
 - 다른 저장소의 클라우드 세션에는 전역 설치가 미치지 않는다. 그 저장소에 이 묶음을 커밋하거나, 클라우드 환경의 setup 스크립트에서 설정 저장소를 클론해 설치 스크립트를 실행해야 한다.
 
@@ -58,4 +58,4 @@
 두 번째 줄이 docx, pdf, pptx, xlsx(공식 확인). 세 번째 줄은 예시 스킬 묶음이며 정확한 목록은 설치 후 `/skills`에서 확인한다. 플러그인 스킬은 `document-skills:pptx`처럼 네임스페이스가 붙으므로 에이전트들은 목록에서 이름을 찾아 호출하도록 돼 있다.
 
 ## 전용 설정 저장소로 옮기기
-새 저장소(예: `claude-config`)를 만들고 `CLAUDE.md`, `.claude/`(rules/ 제외), `scripts/`를 복사한 뒤 그 저장소에서 설치 스크립트를 실행하면 된다. 설치 스크립트는 자기 위치를 기준으로 파일을 찾는다.
+새 저장소(예: `claude-config`)를 만들고 `CLAUDE.md`, `.claude/`(rules/ 제외), `scripts/`, `.gitattributes`를 복사한 뒤 그 저장소에서 설치 스크립트를 실행하면 된다. 설치 스크립트는 자기 위치를 기준으로 파일을 찾는다.

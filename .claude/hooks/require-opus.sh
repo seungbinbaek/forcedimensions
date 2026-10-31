@@ -14,7 +14,7 @@ case "$model" in
   __skip__|"") [ "$model" = "__skip__" ] && exit 0 ;;
 esac
 if [ "$model" != "opus" ]; then
-  printf '%s\n' "라우팅 정책: 서브에이전트는 항상 Opus다. Agent 호출에 model: \"opus\" 와 effort(low|medium|high|xhigh) 를 명시해 다시 호출하라. (현재 model: '${model:-없음}')" >&2
+  printf '%s\n' "라우팅 정책: 서브에이전트는 항상 Opus다. Agent 호출에 model: \"opus\" 와 effort(low|medium|high|xhigh, 사유가 있으면 max) 를 명시해 다시 호출하라. (현재 model: '${model:-없음}')" >&2
   exit 2
 fi
 exit 0

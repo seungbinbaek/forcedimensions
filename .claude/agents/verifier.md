@@ -1,6 +1,6 @@
 ---
 name: verifier
-description: 적대적 검증자. 다른 에이전트의 변경이나 산출물을 반박하려고 시도하고, 가능한 검사를 실행해 PASS/FAIL과 증거를 돌려준다. E3 이상 변경, 자동 검사가 없는 변경, 디자인 산출물의 AI 패턴 검수에 사용. 항상 Opus, effort high. 파일을 수정하지 않는다.
+description: 적대적 검증자. 다른 에이전트의 변경이나 산출물을 반박하려고 시도하고, 가능한 검사를 실행해 PASS/FAIL과 증거를 돌려준다. 실패 비용이 큰 변경(동시성, 보안, 데이터, 외부 시스템), 변경을 덮는 자동 검사가 없는 medium 이상 변경, 디자인 산출물의 AI 패턴 검수에 사용. 항상 Opus, effort high. 파일을 수정하지 않는다.
 model: opus
 effort: high
 tools: Read, Grep, Glob, Bash

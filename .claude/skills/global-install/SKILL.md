@@ -10,6 +10,7 @@ description: 이 저장소의 운영 정책(CLAUDE.md), Opus 에이전트 정의
 - Windows PowerShell: `powershell -ExecutionPolicy Bypass -File scripts/install-claude-global.ps1`
 - WSL 안에서 실행하면 WSL의 ~/.claude에 설치된다. Windows 쪽 Claude Code에 적용하려면 PowerShell 스크립트를 쓴다.
 - 전역 설치 후에는 이 스킬이 다른 저장소에서도 발동한다. 그때는 스크립트 경로가 이 저장소의 절대 경로로 바뀌어 있으니 그 경로를 그대로 실행한다. 경로가 없으면 저장소를 다시 클론하라고 안내한다.
+- 현재 작업 디렉터리의 git 루트가 스크립트 저장소와 다르고, 그 루트의 CLAUDE.md에 `# 운영 정책: Architect + Opus 실행` 제목이 있으면 같은 정책이 두 번 로드된다(전역 블록 + 프로젝트 사본). 이때는 그 CLAUDE.md의 절대 경로(슬래시 경로)를 그 저장소의 `.claude/settings.local.json`의 `claudeMdExcludes` 배열에 추가한다(파일이 없으면 `{"claudeMdExcludes": ["<절대경로>"]}`로 만든다). 그 저장소 쪽 정책·스킬을 전역에 쓰려면 그 저장소의 설치 스크립트를 실행해 다시 설치한다.
 
 ## 스크립트가 하는 일
 1. `CLAUDE.md`(운영 정책) → `~/.claude/CLAUDE.md`의 마커 블록(`<!-- claude-routing:policy:start/end -->`)으로 병합. 사용자 CLAUDE.md의 다른 내용은 그대로 둔다. 사용자 레벨 CLAUDE.md는 모든 프로젝트에 로드된다.
@@ -27,6 +28,6 @@ description: 이 저장소의 운영 정책(CLAUDE.md), Opus 에이전트 정의
 
 ## 주의
 - 설치 후 이 컴퓨터에서는 저장소의 CLAUDE.md(claudeMdExcludes로 제외)와 같은 이름의 스킬(개인 스킬이 프로젝트 스킬보다 우선) 대신 전역 사본이 쓰인다. 저장소에서 정책이나 스킬을 고치거나 pull한 뒤에는 스크립트를 다시 실행한다.
-- 이 묶음(CLAUDE.md, .claude/, scripts/)은 프로젝트와 무관하다. 다른 저장소나 전용 설정 저장소에 그대로 복사해도 스크립트는 자기 위치를 기준으로 동작한다.
+- 이 묶음(CLAUDE.md, .claude/의 agents·skills·hooks·settings.json, scripts/, .gitattributes)은 프로젝트와 무관하다. `.claude/rules/`는 저장소 전용 메모이므로 복사하지 않는다. 다른 저장소나 전용 설정 저장소에 복사해도 스크립트는 자기 위치를 기준으로 동작한다.
 - `CLAUDE_CODE_EFFORT_LEVEL` 환경변수가 설정돼 있으면 에이전트별 effort가 무시된다. 스크립트가 감지하면 경고한다.
 - 모든 서브에이전트를 강제로 Opus에 고정하려면 `~/.claude/settings.json`의 env에 `CLAUDE_CODE_SUBAGENT_MODEL_FORCE: "1"`을 추가할 수 있다. 단, 이 모드에서 에이전트별 effort가 유지되는지는 공식 문서에 명시되지 않았으므로 켠 뒤 `/tasks`로 확인한다.

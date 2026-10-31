@@ -16,7 +16,7 @@ description: 현재 세션에서 한 작업이나 반복 절차를 재사용 가
    - 로컬 전역: `~/.claude/skills/<이름>/` (이 컴퓨터의 모든 세션). 사용자가 "전역", "모든 세션"이라고 했을 때만. 클라우드 세션(`CLAUDE_CODE_REMOTE=true`)에서는 건너뛰고 보고에 적는다.
    - 기본은 프로젝트에만 저장한다.
 5. **검증**: skill-creator가 있으면 `scripts/quick_validate.py`, 없으면 frontmatter에 name과 description이 있고 `---`가 첫 줄인지 확인한다. 가능하면 `/skills` 목록에 뜨는지 다음 세션에서 확인하라고 안내한다.
-6. **패키징**: `dist/<이름>.skill`(zip)을 만든다. skill-creator의 `package_skill.py`가 있으면 그걸 쓰고, 없으면 `zip -r`로 만든다. `dist/`는 .gitignore에 있다.
+6. **패키징**: `dist/<이름>.skill`(zip)을 Bash로 만든다(settings가 `dist/`의 Read·Write를 막으므로 확인은 `unzip -l`로 한다). skill-creator의 `package_skill.py`가 있으면 그걸 쓰고, 없으면 `zip -r`로 만든다. `dist/`가 .gitignore에 없으면 추가를 제안하고, 패키지는 커밋하지 않는다.
 7. **배포 준비**:
    - 스킬 저장소가 있으면(`~/claude-skills` 또는 사용자가 지정한 경로) 복사해 커밋한다. push는 사용자가 "push까지"라고 했을 때만.
    - claude.ai: 설정 → Capabilities → Skills에서 `.skill` 파일 업로드. 터미널에서 올리는 경로는 없다. 올리면 Claude Code 세션에 자동 동기화된다.
